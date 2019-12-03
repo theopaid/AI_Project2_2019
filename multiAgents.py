@@ -69,15 +69,31 @@ class ReflexAgent(Agent):
         # Useful information you can extract from a GameState (pacman.py)
         successorGameState = currentGameState.generatePacmanSuccessor(action)
         newPos = successorGameState.getPacmanPosition()
-        print newPos
         newFood = successorGameState.getFood()
-        print newFood
         newGhostStates = successorGameState.getGhostStates()
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-        print newScaredTimes
 
-        "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        # We need to calculate thec distance to the nearest food pellet
+        newFoodList = newFood.asList()
+        minFoodDst = -1
+        for foodItem in newFoodList:
+            dst = util.manhattanDistance(newPos, foodItem)
+            if minFoodDst >= dst or minFoodDst == -1:
+                minFoodDst = dst
+
+        # We need to calculate the distance from pacman to the ghosts.
+        dst_toGhosts = 1
+        ghostsCloseBy = 0
+        for ghostState in successorGameState.getGhostPositions():
+            dst = util.manhattanDistance(newPos, ghostState)
+            dst_toGhosts += dst
+            if dst <= 1:
+                ghostsCloseBy += 1
+
+        # Combining the numbers to get a result that we can compare
+        result = successorGameState.getScore() + (1 / float(minFoodDst)) - (1 / float(dst_toGhosts)) - ghostsCloseBy
+
+        return result
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -131,8 +147,28 @@ class MinimaxAgent(MultiAgentSearchAgent):
           gameState.getNumAgents():
             Returns the total number of agents in the game
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def minimax(agent, depth, gameState):
+            if gameState.isLose() or gameState.isWin() or depth == self.depth: # When the game is over or depth is reached
+                return self.evaluationFunction(gameState)
+            if agent == 0: # maximize for pacman
+                return max(minimax(1, depth, gameState.generateSuccessor(agent, newState)) for newState in gameState.getLegalActions(agent))
+            else: # for ghosts
+                nextAgent = agent + 1
+                if gameState.getNumAgents() == nextAgent:
+                    nextAgent = 0
+                if nextAgent == 0:
+                    depth += 1
+                return min(minimax(nextAgent, depth, gameState.generateSuccessor(agent, newState)) for newState in gameState.getLegalActions(agent))
+
+        maximum = float("-inf")
+        action = Directions.WEST
+        for agentState in gameState.getLegalActions(0): # Performing maximize action for pacman
+            utility = minimax(1, 0, gameState.generateSuccessor(0, agentState))
+            if utility > maximum or maximum == float("-inf"):
+                maximum = utility
+                action = agentState
+
+        return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -158,8 +194,28 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           All ghosts should be modeled as choosing uniformly at random from their
           legal moves.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def expectimax(agent, depth, gameState):
+            if gameState.isLose() or gameState.isWin() or depth == self.depth: # When the game is over or depth is reached
+                return self.evaluationFunction(gameState)
+            if agent == 0: # maximize for pacman
+                return max(expectimax(1, depth, gameState.generateSuccessor(agent, newState)) for newState in gameState.getLegalActions(agent))
+            else: # for ghosts
+                nextAgent = agent + 1
+                if gameState.getNumAgents() == nextAgent:
+                    nextAgent = 0
+                if nextAgent == 0:
+                    depth += 1
+                return sum(expectimax(nextAgent, depth, gameState.generateSuccessor(agent, newState)) for newState in gameState.getLegalActions(agent)) / float(len(gameState.getLegalActions(agent)))
+
+        maximum = float("-inf")
+        action = Directions.WEST
+        for agentState in gameState.getLegalActions(0): # Performing maximize action for pacman
+            utility = expectimax(1, 0, gameState.generateSuccessor(0, agentState))
+            if utility > maximum or maximum == float("-inf"):
+                maximum = utility
+                action = agentState
+
+        return action
 
 def betterEvaluationFunction(currentGameState):
     """
